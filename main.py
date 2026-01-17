@@ -1,11 +1,10 @@
 # ======================================
-# PHISHING URL DETECTION - API
+# PHISHING URL DETECTION - API (FINAL FIX)
 # ======================================
 
 import os
 import re
 import pickle
-import hashlib
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -19,7 +18,6 @@ from scipy.sparse import hstack, csr_matrix
 # -----------------------------
 app = FastAPI(title="Phishing URL Guard API")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,9 +27,8 @@ app.add_middleware(
 )
 
 # -----------------------------
-# LOAD ARTIFACTS
+# LOAD MODEL ARTIFACTS
 # -----------------------------
-# Load models at startup to avoid reloading on every request
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 try:
@@ -41,106 +38,111 @@ try:
     with open(os.path.join(BASE_DIR, "char_tfidf_vectorizer.pkl"), "rb") as f:
         char_vectorizer = pickle.load(f)
 except FileNotFoundError:
-    print(f"Error: Model files not found in {BASE_DIR}. Please ensure 'phishing_cnb_model.pkl' and 'char_tfidf_vectorizer.pkl' are in the correct directory.")
     model = None
     char_vectorizer = None
+
+# -----------------------------
+# CONSTANTS
+# -----------------------------
+PHISHING_THRESHOLD = 0.75  # reduces false positives
 
 # -----------------------------
 # PREPROCESSING
 # -----------------------------
 def clean_url(url: str) -> str:
-    url = url.lower()
-    url = re.sub(r"https?://", "", url)
-    url = re.sub(r"www\.", "", url)
-    return url.strip()
+    """
+    Normalize URL for TF-IDF:
+    - keep domain + path
+    - normalize numbers, hashes, UUID-like tokens
+    """
+    url = url.lower().strip()
+    parsed = urlparse(url if url.startswith("http") else "http://" + url)
 
-def stable_hash(text: str) -> int:
-    return int(hashlib.md5(text.encode()).hexdigest(), 16) % 1000
+    domain = parsed.netloc.replace("www.", "")
+    path = parsed.path
+
+    # Normalize dynamic tokens
+    path = re.sub(r"\d+", "<num>", path)
+    path = re.sub(r"[a-f0-9]{8,}", "<hash>", path)
+
+    return domain + path
+
 
 def url_features(urls: pd.Series) -> csr_matrix:
-    length = urls.str.len().values.reshape(-1, 1)
+    """
+    Numeric features extracted ONLY from domain
+    (prevents sub-path false positives)
+    """
+    features = []
 
-    digits = urls.apply(
-        lambda x: sum(c.isdigit() for c in x)
-    ).values.reshape(-1, 1)
+    for url in urls:
+        parsed = urlparse(url if url.startswith("http") else "http://" + url)
+        domain = parsed.netloc.replace("www.", "")
 
-    special_chars = urls.apply(
-        lambda x: sum(not c.isalnum() for c in x)
-    ).values.reshape(-1, 1)
+        features.append([
+            len(domain),                  # domain length
+            domain.count("."),            # number of subdomains
+            sum(c.isdigit() for c in domain),
+            domain.count("-")             # hyphen count
+        ])
 
-    def extract_tld(url):
-        try:
-            url = ''.join(c for c in url if ord(c) < 128)
-            # Prepend https to ensure urlparse works correctly if scheme is missing
-            if not url.startswith("http"):
-                 parsed = urlparse("http://" + url)
-            else:
-                 parsed = urlparse(url)
-            
-            tld = parsed.netloc.split('.')[-1]
-            return stable_hash(tld)
-        except Exception:
-            return 0
-
-    tld = urls.apply(extract_tld).values.reshape(-1, 1)
-
-    features = np.hstack(
-        [length, digits, special_chars, tld]
-    ).astype(np.float32)
-
-    return csr_matrix(features)
+    return csr_matrix(np.array(features, dtype=np.float32))
 
 # -----------------------------
-# API MODELS & ENDPOINTS
+# API MODELS
 # -----------------------------
 class URLRequest(BaseModel):
     url: str
 
+# -----------------------------
+# ROUTES
+# -----------------------------
 @app.get("/")
-def read_root():
+def root():
     return {"message": "Phishing URL Guard API is running"}
+
 
 @app.post("/predict")
 def predict_url(request: URLRequest):
     if model is None or char_vectorizer is None:
-        raise HTTPException(status_code=500, detail="Model files not loaded properly.")
-    
-    url = request.url
-    
-    # Create DataFrame for processing
+        raise HTTPException(
+            status_code=500,
+            detail="Model files not loaded properly"
+        )
+
+    url = request.url.strip()
+
+    # Prepare dataframe
     df = pd.DataFrame({"url": [url]})
     df["url_clean"] = df["url"].apply(clean_url)
 
-    # TF-IDF features
     try:
+        # Feature extraction
         X_char = char_vectorizer.transform(df["url_clean"])
-        
-        # Numeric features
-        X_num = url_features(df["url_clean"])
-        
-        # Combine features
+        X_num = url_features(df["url"])
         X_final = hstack([X_char, X_num])
-        
-        # Predictions
-        preds = model.predict(X_final)
+
+        # Prediction
         probs = model.predict_proba(X_final)
-        
-        pos_index = list(model.classes_).index(1)
-        phishing_prob = probs[0, pos_index]
-        label = preds[0]
-        
-        result = {
+        phishing_index = list(model.classes_).index(1)
+        phishing_prob = float(probs[0, phishing_index])
+
+        return {
             "url": url,
-            "prediction": "phishing" if label == 1 else "benign",
-            "phishing_probability": round(float(phishing_prob), 4)
+            "prediction": "phishing"
+            if phishing_prob >= PHISHING_THRESHOLD
+            else "benign",
+            "phishing_probability": round(phishing_prob, 4)
         }
-        return result
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Prediction error: {str(e)}"
+        )
 
 # -----------------------------
-# LOCAL DEV RUNNER
+# LOCAL DEVELOPMENT
 # -----------------------------
 if __name__ == "__main__":
     import uvicorn
