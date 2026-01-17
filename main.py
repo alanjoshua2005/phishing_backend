@@ -1,5 +1,5 @@
 # ======================================
-# PHISHING URL DETECTION - API (FINAL FIX)
+# PHISHING URL DETECTION - API (FINAL)
 # ======================================
 
 import os
@@ -44,24 +44,29 @@ except FileNotFoundError:
 # -----------------------------
 # CONSTANTS
 # -----------------------------
-PHISHING_THRESHOLD = 0.75  # reduces false positives
+PHISHING_THRESHOLD = 0.75  # safer threshold to reduce false positives
 
 # -----------------------------
 # PREPROCESSING
 # -----------------------------
 def clean_url(url: str) -> str:
     """
-    Normalize URL for TF-IDF:
+    Clean URL for TF-IDF:
+    - remove scheme
+    - normalize www
     - keep domain + path
-    - normalize numbers, hashes, UUID-like tokens
+    - normalize dynamic tokens
     """
     url = url.lower().strip()
     parsed = urlparse(url if url.startswith("http") else "http://" + url)
 
-    domain = parsed.netloc.replace("www.", "")
+    domain = parsed.netloc.lower()
+    if domain.startswith("www."):
+        domain = domain[4:]
+
     path = parsed.path
 
-    # Normalize dynamic tokens
+    # Normalize dynamic tokens (UUIDs, IDs, hashes)
     path = re.sub(r"\d+", "<num>", path)
     path = re.sub(r"[a-f0-9]{8,}", "<hash>", path)
 
@@ -70,14 +75,16 @@ def clean_url(url: str) -> str:
 
 def url_features(urls: pd.Series) -> csr_matrix:
     """
-    Numeric features extracted ONLY from domain
-    (prevents sub-path false positives)
+    Numeric features ONLY from domain
+    (prevents sub-path bias)
     """
     features = []
 
     for url in urls:
         parsed = urlparse(url if url.startswith("http") else "http://" + url)
-        domain = parsed.netloc.replace("www.", "")
+        domain = parsed.netloc.lower()
+        if domain.startswith("www."):
+            domain = domain[4:]
 
         features.append([
             len(domain),                  # domain length
@@ -142,7 +149,7 @@ def predict_url(request: URLRequest):
         )
 
 # -----------------------------
-# LOCAL DEVELOPMENT
+# LOCAL DEV RUNNER
 # -----------------------------
 if __name__ == "__main__":
     import uvicorn
