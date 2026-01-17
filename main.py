@@ -1,9 +1,8 @@
 # ======================================
-# PHISHING URL DETECTION - API (FINAL)
+# PHISHING URL DETECTION - API (STABLE)
 # ======================================
 
 import os
-import re
 import pickle
 import numpy as np
 import pandas as pd
@@ -44,53 +43,65 @@ except FileNotFoundError:
 # -----------------------------
 # CONSTANTS
 # -----------------------------
-PHISHING_THRESHOLD = 0.75  # safer threshold to reduce false positives
+PHISHING_THRESHOLD = 0.75
 
 # -----------------------------
-# PREPROCESSING
+# FAMOUS / TRUSTED DOMAINS
 # -----------------------------
-def clean_url(url: str) -> str:
-    """
-    Clean URL for TF-IDF:
-    - remove scheme
-    - normalize www
-    - keep domain + path
-    - normalize dynamic tokens
-    """
+FAMOUS_DOMAINS = {
+    "google.com",
+    "youtube.com",
+    "gmail.com",
+    "github.com",
+    "stackoverflow.com",
+    "chatgpt.com",
+    "openai.com",
+    "huggingface.co",
+    "amazon.com",
+    "apple.com",
+    "microsoft.com",
+    "facebook.com",
+    "instagram.com",
+    "linkedin.com",
+    "twitter.com",
+    "x.com",
+    "whatsapp.com"
+}
+
+# -----------------------------
+# HELPERS
+# -----------------------------
+def extract_domain(url: str) -> str:
     url = url.lower().strip()
     parsed = urlparse(url if url.startswith("http") else "http://" + url)
-
-    domain = parsed.netloc.lower()
+    domain = parsed.netloc
     if domain.startswith("www."):
         domain = domain[4:]
-
-    path = parsed.path
-
-    # Normalize dynamic tokens (UUIDs, IDs, hashes)
-    path = re.sub(r"\d+", "<num>", path)
-    path = re.sub(r"[a-f0-9]{8,}", "<hash>", path)
-
-    return domain + path
+    return domain
 
 
-def url_features(urls: pd.Series) -> csr_matrix:
+def is_famous_domain(domain: str) -> bool:
     """
-    Numeric features ONLY from domain
-    (prevents sub-path bias)
+    Matches:
+    - google.com
+    - www.google.com
+    - mail.google.com
     """
+    for famous in FAMOUS_DOMAINS:
+        if domain == famous or domain.endswith("." + famous):
+            return True
+    return False
+
+
+def url_features(domains: pd.Series) -> csr_matrix:
     features = []
 
-    for url in urls:
-        parsed = urlparse(url if url.startswith("http") else "http://" + url)
-        domain = parsed.netloc.lower()
-        if domain.startswith("www."):
-            domain = domain[4:]
-
+    for domain in domains:
         features.append([
-            len(domain),                  # domain length
-            domain.count("."),            # number of subdomains
+            len(domain),
+            domain.count("."),
             sum(c.isdigit() for c in domain),
-            domain.count("-")             # hyphen count
+            domain.count("-")
         ])
 
     return csr_matrix(np.array(features, dtype=np.float32))
@@ -112,30 +123,36 @@ def root():
 @app.post("/predict")
 def predict_url(request: URLRequest):
     if model is None or char_vectorizer is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Model files not loaded properly"
-        )
+        raise HTTPException(500, "Model files not loaded")
 
     url = request.url.strip()
+    domain = extract_domain(url)
 
-    # Prepare dataframe
-    df = pd.DataFrame({"url": [url]})
-    df["url_clean"] = df["url"].apply(clean_url)
+    # ✅ FAMOUS DOMAIN OVERRIDE
+    if is_famous_domain(domain):
+        return {
+            "url": url,
+            "domain": domain,
+            "prediction": "benign",
+            "reason": "famous_domain",
+            "phishing_probability": 0.0
+        }
 
+    # -----------------------------
+    # ML PREDICTION (UNKNOWN DOMAINS)
+    # -----------------------------
     try:
-        # Feature extraction
-        X_char = char_vectorizer.transform(df["url_clean"])
-        X_num = url_features(df["url"])
+        X_char = char_vectorizer.transform([domain])
+        X_num = url_features(pd.Series([domain]))
         X_final = hstack([X_char, X_num])
 
-        # Prediction
         probs = model.predict_proba(X_final)
         phishing_index = list(model.classes_).index(1)
         phishing_prob = float(probs[0, phishing_index])
 
         return {
             "url": url,
+            "domain": domain,
             "prediction": "phishing"
             if phishing_prob >= PHISHING_THRESHOLD
             else "benign",
@@ -143,13 +160,10 @@ def predict_url(request: URLRequest):
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction error: {str(e)}"
-        )
+        raise HTTPException(500, f"Prediction error: {str(e)}")
 
 # -----------------------------
-# LOCAL DEV RUNNER
+# LOCAL DEV
 # -----------------------------
 if __name__ == "__main__":
     import uvicorn
