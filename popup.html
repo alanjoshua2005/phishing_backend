@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CGuard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 320px;
+            font-family: 'Orbitron', monospace;
+            background: #000000;
+            color: #01adec;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: grid-move 10s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes grid-move {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(20px, 20px); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        /* Header with Omnitrix core */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .omnitrix-mini {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 12px;
+            position: relative;
+        }
+
+        .hexagon-mini {
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+            background: linear-gradient(135deg, #01adec, #0071aa);
+            animation: pulse-mini 2s ease-in-out infinite;
+            position: relative;
+        }
+
+        .hexagon-mini::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+            background: #000000;
+        }
+
+        .hexagon-mini::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+            background: linear-gradient(135deg, #01adec, #00aa00);
+        }
+
+        @keyframes pulse-mini {
+            0%, 100% {
+                filter: drop-shadow(0 0 10px #01adec);
+            }
+            50% {
+                filter: drop-shadow(0 0 20px #01adec);
+            }
+        }
+
+        .header h2 {
+            color: #01adec;
+            font-size: 18px;
+            font-weight: 900;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px #01adec;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            color: #00aa00;
+            font-size: 10px;
+            letter-spacing: 1px;
+            font-weight: 400;
+        }
+
+        /* Status panel */
+        .status {
+            background: rgba(0, 255, 0, 0.05);
+            border: 2px solid #01adec;
+            padding: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        }
+
+        .status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #01adec, transparent);
+        }
+
+        .status-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 10px #01adec);
+            animation: icon-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes icon-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .status-text {
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px currentColor;
+        }
+
+        .status.enabled {
+            border-color: #01adec;
+            color: #01adec;
+            animation: border-pulse-on 2s ease-in-out infinite;
+        }
+
+        .status.disabled {
+            border-color: #ff0000;
+            color: #ff0000;
+            animation: border-pulse-off 2s ease-in-out infinite;
+        }
+
+        @keyframes border-pulse-on {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(0, 234, 255, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(0, 200, 255, 0.8);
+            }
+        }
+
+        @keyframes border-pulse-off {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+            }
+        }
+
+        /* Toggle button */
+        .toggle-btn {
+            width: 100%;
+            padding: 14px;
+            border: 3px solid #01adec;
+            font-family: 'Orbitron', monospace;
+            font-size: 13px;
+            font-weight: 900;
+            cursor: pointer;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .toggle-btn.on {
+            background: linear-gradient(135deg, #01adec, #008baa);
+            color: #000000;
+            box-shadow: 0 0 20px rgba(0, 183, 255, 0.5);
+        }
+
+        .toggle-btn.off {
+            background: linear-gradient(135deg, #ff0000, #aa0000);
+            color: #000000;
+            border-color: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        .toggle-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .toggle-btn.on:hover {
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.746);
+        }
+
+        .toggle-btn.off:hover {
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+        }
+
+        .toggle-btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        /* Info panel */
+        .info {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid rgba(0, 187, 255, 0.3);
+            font-size: 10px;
+            color: #008eaa;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* Decorative corners */
+        .corner {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+        }
+
+        .corner-tl {
+            top: 5px;
+            left: 5px;
+            border-top: 2px solid #01adec;
+            border-left: 2px solid #01adec;
+        }
+
+        .corner-tr {
+            top: 5px;
+            right: 5px;
+            border-top: 2px solid #01adec;
+            border-right: 2px solid #01adec;
+        }
+
+        .corner-bl {
+            bottom: 5px;
+            left: 5px;
+            border-bottom: 2px solid #01adec;
+            border-left: 2px solid #01adec;
+        }
+
+        .corner-br {
+            bottom: 5px;
+            right: 5px;
+            border-bottom: 2px solid #01adec;
+            border-right: 2px solid #01adec;
+        }
+
+        /* Status indicator dots */
+        .status-dots {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 15px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #01adec;
+            animation: blink 1.5s ease-in-out infinite;
+            box-shadow: 0 0 5px #01adec;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+
+        <div class="header">
+            
+            <h2>CYBER GUARD</h2>
+        </div>
+
+        <div class="status enabled" id="status">
+            <div class="status-icon" id="statusIcon">⚡</div>
+            <div class="status-text" id="statusText">PROTECTION ACTIVATED</div>
+        </div>
+    </div>
+</body>
+</html>

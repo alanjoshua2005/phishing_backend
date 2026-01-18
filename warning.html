@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CGuard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', monospace;
+            background: #000000;
+            color: #01adec;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: scroll;
+        }
+
+        /* Animated grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: grid-move 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes grid-move {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Scan line effect */
+        .scan-line {
+            position: fixed;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #01adec, transparent);
+            top: 0;
+            animation: scan 4s linear infinite;
+            pointer-events: none;
+            box-shadow: 0 0 10px #01adec;
+            z-index: 1000;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Main container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        /* Omnitrix device */
+        .omnitrix-core {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 30px;
+            position: relative;
+        }
+
+        /* Hexagon shape */
+        .hexagon {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+            background: linear-gradient(135deg, #01adec, #00aa00);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .hexagon::before {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+            background: #000000;
+        }
+
+        .hexagon::after {
+            content: '';
+            position: absolute;
+            inset: 15px;
+            clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+            background: linear-gradient(135deg, #01adec, #00aa00);
+        }
+
+        /* Hourglass symbol */
+        .hourglass {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            z-index: 10;
+        }
+
+        .hourglass::before,
+        .hourglass::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+        }
+
+        .hourglass::before {
+            top: 0;
+            border-bottom: 20px solid #000000;
+        }
+
+        .hourglass::after {
+            bottom: 0;
+            border-top: 20px solid #000000;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                filter: drop-shadow(0 0 20px #01adec);
+            }
+            50% {
+                filter: drop-shadow(0 0 20px #01adec) drop-shadow(0 0 60px #01adec);
+            }
+        }
+
+        /* Rotating ring */
+        .rotating-ring {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: -20px;
+            bottom: -20px;
+            border: 2px solid #01adec;
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: rotate 10s linear infinite;
+        }
+
+        .rotating-ring::before {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #01adec;
+            border-radius: 50%;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px #01adec;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Warning panel */
+        .warning-panel {
+            background: #000000;
+            border: 4px solid #01adec;
+            padding: 40px;
+            position: relative;
+            box-shadow: 
+                0 0 20px rgba(0, 110, 255, 0.3),
+                inset 0 0 20px rgba(0, 132, 255, 0.1);
+            animation: border-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes border-pulse {
+            0%, 100% {
+                box-shadow: 
+                    0 0 20px rgba(0, 162, 255, 0.5),
+                    inset 0 0 20px rgba(0, 255, 0, 0.1);
+            }
+            50% {
+                box-shadow: 
+                    0 0 40px rgba(0, 200, 255, 0.8),
+                    inset 0 0 40px rgba(0, 255, 0, 0.2);
+            }
+        }
+
+        /* Corner brackets */
+        .corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+        }
+
+        .corner-tl {
+            top: 10px;
+            left: 10px;
+            border-top: 3px solid #01adec;
+            border-left: 3px solid #01adec;
+        }
+
+        .corner-tr {
+            top: 10px;
+            right: 10px;
+            border-top: 3px solid #01adec;
+            border-right: 3px solid #01adec;
+        }
+
+        .corner-bl {
+            bottom: 10px;
+            left: 10px;
+            border-bottom: 3px solid #01adec;
+            border-left: 3px solid #01adec;
+        }
+
+        .corner-br {
+            bottom: 10px;
+            right: 10px;
+            border-bottom: 3px solid #01adec;
+            border-right: 3px solid #01adec;
+        }
+
+        /* Alert badge */
+        .alert-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff0000;
+            padding: 10px 20px;
+            margin-bottom: 30px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            font-size: 14px;
+        }
+
+        .alert-dot {
+            width: 10px;
+            height: 10px;
+            background: #ff0000;
+            border-radius: 50%;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Title */
+        h1 {
+            font-size: 48px;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 
+                0 0 10px #0082b1,
+                0 0 20px #01adec8a,
+                0 0 30px #01adec68;
+            animation: glitch 3s infinite;
+            letter-spacing: 4px;
+        }
+
+        @keyframes glitch {
+            0%, 90%, 100% {
+                text-shadow: 
+                    0 0 10px #01adec,
+                    0 0 20px #01adec,
+                    0 0 30px #01adec;
+            }
+            91%, 93% {
+                text-shadow: 
+                    2px 2px #ff0000,
+                    -2px -2px #00ffff;
+                transform: translate(2px, 1px);
+            }
+            92%, 94% {
+                text-shadow: 
+                    -2px -2px #ff0000,
+                    2px 2px #00ffff;
+                transform: translate(-2px, -1px);
+            }
+        }
+
+        /* Warning box */
+        .warning-box {
+            background: rgba(0, 255, 0, 0.05);
+            border-left: 6px solid #01adec;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .warning-box p {
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        .warning-box .highlight {
+            color: #ff0000;
+            font-weight: bold;
+            text-shadow: 0 0 5px #ff0000;
+        }
+
+        /* URL display */
+        .url-container {
+            background: #000000;
+            border: 2px solid #01adec;
+            padding: 20px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .url-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #01adec, transparent);
+        }
+
+        .url-label {
+            color: #01adec;
+            font-size: 12px;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        #blockedUrl {
+            font-family: 'Share Tech Mono', monospace;
+            color: #01adec;
+            font-size: 14px;
+            word-break: break-all;
+            text-shadow: 0 0 5px #01adec;
+        }
+
+        /* Stats grid */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: rgba(0, 255, 0, 0.05);
+            border: 2px solid #01adec;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            margin-top: 5px;
+            letter-spacing: 1px;
+        }
+
+        /* Warning text */
+        .warning-text {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .warning-text p:first-child {
+            color: #ffff00;
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 10px;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        .warning-text p:last-child {
+            color: #888888;
+            font-size: 14px;
+        }
+
+        /* Button */
+        .btn-container {
+            text-align: center;
+        }
+
+        #proceedBtn {
+            background: linear-gradient(135deg, #01adec, #004faa);
+            color: #000000;
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 18px;
+            padding: 18px 50px;
+            border: 3px solid #01adec;
+            cursor: pointer;
+            letter-spacing: 3px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 183, 255, 0.5);
+        }
+
+        #proceedBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(0, 204, 255, 0.8);
+        }
+
+        #proceedBtn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 255, 0, 0.3);
+            text-align: center;
+            font-size: 11px;
+            color: #006600;
+            letter-spacing: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+            }
+
+            .warning-panel {
+                padding: 20px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            #proceedBtn {
+                font-size: 16px;
+                padding: 15px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scan-line"></div>
+    
+    <div class="container">
+        <!-- Omnitrix Core -->
+        
+
+        <!-- Warning Panel -->
+        <div class="warning-panel">
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
+
+            <!-- Alert Badge -->
+            <div style="text-align: center;">
+                <div class="alert-badge">
+                    <div class="alert-dot"></div>
+                    <span>THREAT DETECTED</span>
+                    <div class="alert-dot"></div>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <h1>THREAT ALERT</h1>
+
+            <!-- Warning Message -->
+            <div class="warning-box">
+                <p>
+                    ⚡ <strong>ANONYMOUS TECHNOLOGY WARNING</strong> ⚡<br><br>
+                    The security system has identified this URL as a <span class="highlight">PHISHING THREAT</span>. 
+                    This malicious signal is designed to steal your credentials, personal data, and compromise your system integrity.
+                </p>
+            </div>
+
+            <!-- URL Display -->
+            <div class="url-container">
+                <div class="url-label">[ MALICIOUS URL DETECTED ]</div>
+                <div id="blockedUrl">Loading...</div>
+            </div>
+
+            <!-- Stats -->
+            
+
+            <!-- Warning Text -->
+            <div class="warning-text">
+                <p>⚡ SECURITY PROTOCOL ACTIVATED ⚡</p>
+                <p>Only proceed if you absolutely trust this URL.</p>
+            </div>
+
+            <!-- Button -->
+            <div class="btn-container">
+                <button id="proceedBtn">
+                    ⚡ OVERRIDE & PROCEED ⚡
+                </button>
+            </div>
+
+            
+        </div>
+    </div>
+
+    <script src="warning.js"></script>
+</body>
+</html>
